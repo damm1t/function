@@ -7,6 +7,7 @@
 
 #include <memory>
 #include <variant>
+#include <cstddef>
 
 
 template<typename R, typename... Args>
@@ -58,12 +59,15 @@ private:
 template<typename T>
 class function;
 
-const int MAX_SIZE = 18;
+constexpr size_t MAX_SIZE = 64;
+constexpr size_t SIZE = 64;
+constexpr size_t SMALL_ALIGN = 64;
 
 template<typename R, typename... Args>
 class function<R(Args...)> {
     using smallT =  std::array<char, MAX_SIZE>;
     using bigT = std::unique_ptr<callable<R, Args...>>;
+    using alligh = std::variant<bigT, smallT>;
 public:
     function() noexcept : call_v(nullptr) {}
 
@@ -95,7 +99,7 @@ public:
 
     template<typename F>
     function(F func) : call_v(nullptr) {
-        if (sizeof(callable_impl<F, R, Args...>) <= sizeof(smallT)) {
+        if constexpr (std::is_nothrow_move_constructible_v<F> && alignof(callable_impl<F, R, Args...>) <= alignof(alligh)){
             if (std::holds_alternative<bigT>(call_v)) {
                 call_v = std::array<char, MAX_SIZE>();
             }
