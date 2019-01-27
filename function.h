@@ -30,28 +30,28 @@ struct callable {
 
 template<typename F, typename R, typename... Args>
 struct callable_impl : callable<R, Args...> {
-    callable_impl(F func) : callable<R, Args...>(), _function(std::move(func)) {}
+    callable_impl(F func) : callable<R, Args...>(), func(std::move(func)) {}
 
     std::unique_ptr<callable<R, Args...>> copy() override {
-        return std::make_unique<callable_impl<F, R, Args...>>(_function);
+        return std::make_unique<callable_impl<F, R, Args...>>(func);
     }
 
     void clone(char *const to) const override {
-        new(to) callable_impl<F, R, Args...>(_function);
+        new(to) callable_impl<F, R, Args...>(func);
     }
 
     void move_by_pointer(char *const to) const override {
-        new(to) callable_impl<F, R, Args...>(std::move(_function));
+        new(to) callable_impl<F, R, Args...>(std::move(func));
     }
 
     R call(Args &&... args) override {
-        return _function(std::forward<Args>(args)...);
+        return func(std::forward<Args>(args)...);
     }
 
     virtual ~callable_impl() = default;
 
 private:
-    F _function;
+    F func;
 };
 
 
@@ -106,7 +106,7 @@ public:
     }
 
     ~function() {
-        empty_small();
+        clear_small();
     }
 
     function &operator=(function const &other) {
@@ -132,7 +132,7 @@ public:
             }
             call_v = std::move(tmp);
         } else {
-            empty_small();
+            clear_small();
             if (std::holds_alternative<bigT>(call_v)) {
                 call_v = std::array<char, MAX_SIZE>();
             }
@@ -166,7 +166,7 @@ public:
 private:
     mutable std::variant<bigT, smallT> call_v;
 
-    void empty_small() {
+    void clear_small() {
         if (std::holds_alternative<smallT>(call_v)) {
             reinterpret_cast<callable<R, Args...> *>(std::get<smallT>(call_v).data())->~callable();
         }
